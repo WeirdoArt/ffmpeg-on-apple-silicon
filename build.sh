@@ -73,6 +73,26 @@ git clone --depth 1 -b master https://github.com/FFmpeg/FFmpeg $CMPLD/ffmpeg &
 # git clone --depth 1 -b v2.0.1 https://aomedia.googlesource.com/aom.git $CMPLD/aom &
 wait
 
+function download_3rdparty_packet() {
+	# args: 1-filename 2-version 3-packet_type 4-download_url
+	local filename=$1
+	local version=$2
+	local packet_type=$3
+	local tmp=$4
+	local split_url=$(echo $tmp | awk -F "/" '{print $NF}')
+	if [[ "${split_url}" == "version" ]]; then
+		local download_url=${tmp/%version/$version}/${filename}-${version}.tar.$3
+	else
+		local download_url=$4/${filename}-${version}.tar.$3
+	fi
+	
+	if [ ! -d "$CMPLD/${filename}-${version}" ]; then
+		echo "Downloading: ${filename} ($version)"
+		{ (curl -Ls -o - ${download_url} | tar zxf - -C $CMPLD/) & }
+		wait
+	fi
+}
+
 function build_fribidi() {
 	local download_url=$(curl -s https://api.github.com/repos/fribidi/fribidi/releases/latest | jq -r '.assets[0].browser_download_url')
 	local tarball_type=$(echo "$download_url" | awk -F "." '{print $NF}')
@@ -97,13 +117,8 @@ function build_fribidi() {
 build_fribidi
 
 function build_yasm() {
-	local filename="yasm-1.3.0"
-	if [ ! -d "$CMPLD/$filename" ]; then
-		echo "Downloading: yasm (1.3.0)"
-		{ (curl -Ls -o - http://www.tortall.net/projects/yasm/releases/${filename}.tar.gz | tar zxf - -C $CMPLD/) & }
-		wait
-	fi
-
+	local filename=yasm-1.3.0
+	download_3rdparty_packet yasm 1.3.0 gz http://www.tortall.net/projects/yasm/releases
 	if [[ ! -e "${SRC}/lib/libyasm.a" ]]; then
 		echo '♻️ ' Start compiling YASM
 		cd ${CMPLD}/${filename}
@@ -133,15 +148,11 @@ function build_aom() {
 }
 
 function build_nasm() {
-	local filename="nasm-2.15.05"
-	if [ ! -d "$CMPLD/$filename" ]; then
-		echo "Downloading: nasm (2.15.05)"
-		{ (curl -Ls -o - https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/${filename}.tar.gz | tar zxf - -C $CMPLD/) & }
-		wait
-	fi
+	local filename=nasm-2.15.05
+	download_3rdparty_packet nasm 2.15.05 gz https://www.nasm.us/pub/nasm/releasebuilds/version
 	if [[ ! -e "${SRC}/bin/nasm" ]]; then
 		echo '♻️ ' Start compiling NASM
-		cd ${CMPLD}/$filename
+		cd ${CMPLD}/${filename}
 		./configure --prefix=${SRC}
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
@@ -150,15 +161,11 @@ function build_nasm() {
 build_nasm
 
 function build_pkgconfig() {
-	local filename="pkg-config-0.29.2"
-	if [ ! -d "$CMPLD/$filename" ]; then
-		echo "Downloading: pkg-config (0.29.2)"
-		{ (curl -Ls -o - https://pkg-config.freedesktop.org/releases/${filename}.tar.gz | tar zxf - -C $CMPLD/) & }
-		wait
-	fi
+	local filename=pkg-config-0.29.2
+	download_3rdparty_packet pkg-config 0.29.2 gz https://pkg-config.freedesktop.org/releases
 	if [[ ! -e "${SRC}/bin/pkg-config" ]]; then
 		echo '♻️ ' Start compiling pkg-config
-		cd ${CMPLD}/$filename
+		cd ${CMPLD}/${filename}
 		export LDFLAGS="-framework Foundation -framework Cocoa"
 		./configure --prefix=${SRC} --with-pc-path=${SRC}/lib/pkgconfig --with-internal-glib --disable-shared --enable-static
 		make -j ${NUM_PARALLEL_BUILDS}
@@ -169,15 +176,11 @@ function build_pkgconfig() {
 build_pkgconfig
 
 function build_zlib() {
-	local filename="zlib-1.2.12"
-	if [ ! -d "$CMPLD/$filename" ]; then
-		echo "Downloading: zlib (1.2.12)"
-		{ (curl -Ls -o - https://zlib.net/fossils/${filename}.tar.gz | tar zxf - -C $CMPLD/) & }
-		wait
-	fi
+	local filename=zlib-1.2.12
+	download_3rdparty_packet zlib 1.2.12 gz https://zlib.net/fossils
 	if [[ ! -e "${SRC}/lib/pkgconfig/zlib.pc" ]]; then
 		echo '♻️ ' Start compiling ZLIB
-		cd ${CMPLD}/$filename
+		cd ${CMPLD}/${filename}
 		./configure --prefix=${SRC}
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
@@ -285,19 +288,11 @@ function build_expat() {
 build_expat
 
 function build_libiconv() {
-	local version="1.17"
-	local filename="libiconv-${version}"
-	local download_url=https://ftp.gnu.org/pub/gnu/libiconv/${filename}.tar.gz
-
-	if [ ! -d "$CMPLD/$filename" ]; then
-		echo "Downloading: libiconv ($version)"
-		{ (curl -Ls -o - ${download_url} | tar zxf - -C $CMPLD/) & }
-		wait
-	fi
-
+	local filename=libiconv-1.17
+	download_3rdparty_packet libiconv 1.17 gz https://ftp.gnu.org/pub/gnu/libiconv
 	if [[ ! -e "${SRC}/lib/libiconv.a" ]]; then
 		echo '♻️ ' Start compiling LIBICONV
-		cd ${CMPLD}/$filename
+		cd ${CMPLD}/${filename}
 		./configure --prefix=${SRC} --disable-shared --enable-static
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
@@ -306,15 +301,17 @@ function build_libiconv() {
 build_libiconv
 
 function build_enca() {
+	local filename=enca-1.19
+	download_3rdparty_packet enca 1.19 gz https://dl.cihar.com/enca
 	if [[ ! -d "${SRC}/libexec/enca" ]]; then
 		echo '♻️ ' Start compiling ENCA
-		cd ${CMPLD}
-		cd enca-1.19
+		cd ${CMPLD}/${filename}
 		./configure --prefix=${SRC} --disable-dependency-tracking --disable-shared --enable-static
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
 	fi
 }
+build_enca
 
 function build_freetype() {
 	#if [[ ! -e "${SRC}/lib/pkgconfig/freetype2.pc" ]]; then
@@ -473,7 +470,6 @@ function build_ffmpeg() {
 
 total_start_time="$(date -u +%s)"
 #build_aom
-#build_libiconv
 #build_enca
 #build_freetype
 #if [[ "$ARCH" == "arm64" ]]; then
