@@ -88,9 +88,14 @@ function download_3rdparty_packet() {
 		local download_url=$4/${filename}-${version}.tar.$3
 	fi
 	
+	local arg=zxf
+	if [[ "${packet_type}" == "xz" ]]; then
+		arg=Jxf
+	fi
+	
 	if [ ! -d "$CMPLD/${filename}-${version}" ]; then
 		echo "Downloading: ${filename} ($version)"
-		{ (curl -Ls -o - ${download_url} | tar zxf - -C $CMPLD/) & }
+		{ (curl -Ls -o - ${download_url} | tar "${arg}" - -C $CMPLD/) & }
 		wait
 	fi
 }
@@ -329,6 +334,7 @@ function build_freetype() {
 build_freetype
 
 function build_gettext() {
+	download_3rdparty_packet gettext 0.21 xz https://ftp.gnu.org/gnu/gettext
 	if [[ ! -e "${SRC}/lib/pkgconfig/gettext.pc" ]]; then
 		echo '♻️ ' Start compiling gettext
 		cd ${CMPLD}
@@ -340,6 +346,7 @@ function build_gettext() {
 		make install
 	fi
 }
+build_gettext
 
 function build_fontconfig() {
 	if [[ ! -e "${SRC}/lib/pkgconfig/fontconfig.pc" ]]; then
