@@ -132,18 +132,21 @@ function build_aom() {
 }
 
 function build_nasm() {
+	filename="nasm-2.15.05"
+	if [ ! -d "$CMPLD/$filename" ]; then
+		echo "Downloading: yasm (2.15.05)"
+		{ (curl -Ls -o - https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.tar.gz | tar zxf - -C $CMPLD/) & }
+		wait
+	fi
 	if [[ ! -e "${SRC}/bin/nasm" ]]; then
 		echo '♻️ ' Start compiling NASM
-		#
-		# compile NASM
-		#
-		cd ${CMPLD}
-		cd nasm-2.15.05
+		cd ${CMPLD}/$filename
 		./configure --prefix=${SRC}
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
 	fi
 }
+build_nasm
 
 function build_pkgconfig() {
 	if [[ ! -e "${SRC}/bin/pkg-config" ]]; then
@@ -430,9 +433,7 @@ function build_ffmpeg() {
 }
 
 total_start_time="$(date -u +%s)"
-#build_yasm
 #build_aom
-#build_nasm
 #build_pkgconfig
 #build_zlib
 #build_lame
