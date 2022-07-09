@@ -32,17 +32,40 @@ fi
 export LDFLAGS=${LDFLAGS:-}
 export CFLAGS=${CFLAGS:-}
 
+function check_package() {
+	if [[ "$ARCH" == "arm64" ]]; then
+		echo "Installing $1 using Homebrew"
+		brew install "$1"
+		if [[ ! -e "/opt/homebrew/opt/$1" ]]; then
+			export LDFLAGS="-L/opt/homebrew/opt/$1/lib ${LDFLAGS}"
+			export CFLAGS="-I/opt/homebrew/opt/$1/include ${CFLAGS}"
+			export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/opt/homebrew/opt/$1/lib/pkgconfig"
+		fi
+	else
+		if [[ ! -e "/usr/local/opt/$1" ]]; then
+			echo "Installing $1 using Homebrew"
+			brew install "$1"
+			export LDFLAGS="-L/usr/local/opt/$1/lib ${LDFLAGS}"
+			export CFLAGS="-I/usr/local/opt/$1/include ${CFLAGS}"
+			export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/usr/local/opt/$1/lib/pkgconfig"
+		fi
+	fi
+}
+check_package pkgconfig
+check_package libtool
+check_package glib
+
 function build_fribidi() {
 	local download_url=$(curl -s https://api.github.com/repos/fribidi/fribidi/releases/latest | jq -r '.assets[0].browser_download_url')
 	tarball_type=$(echo "$download_url" | awk -F "." '{print $NF}')
 	local filename=$(basename $download_url ".tar.$tarball_type")
-	
+
 	if [ ! -d "$CMPLD/$download_url" ]; then
 		echo "Downloading: fribidi"
 		{ (curl -Ls -o - ${download_url} | tar Jxf - -C $CMPLD/) & }
 		wait
 	fi
-	
+
 	if [[ ! -e "${SRC}/lib/pkgconfig/fribidi.pc" ]]; then
 		echo '♻️ ' Start compiling FRIBIDI
 		cd ${CMPLD}/${filename}
