@@ -3,6 +3,8 @@ set -exuo pipefail
 
 # FFmpeg for ARM-based Apple Silicon Macs
 
+total_start_time="$(date -u +%s)"
+
 WORKDIR="$(pwd)/workdir"
 mkdir -p ${WORKDIR}
 
@@ -314,15 +316,17 @@ function build_enca() {
 build_enca
 
 function build_freetype() {
-	#if [[ ! -e "${SRC}/lib/pkgconfig/freetype2.pc" ]]; then
-	echo '♻️ ' Start compiling FREETYPE
-	cd ${CMPLD}
-	cd freetype-2.10.4
-	./configure --prefix=${SRC} --disable-shared --enable-static
-	make -j ${NUM_PARALLEL_BUILDS}
-	make install
-	#fi
+	local filename=freetype-2.10.4
+	download_3rdparty_packet freetype 2.10.4 gz https://download.savannah.gnu.org/releases/freetype
+	if [[ ! -e "${SRC}/lib/pkgconfig/freetype2.pc" ]]; then
+		echo '♻️ ' Start compiling FREETYPE
+		cd ${CMPLD}/${filename}
+		./configure --prefix=${SRC} --disable-shared --enable-static
+		make -j ${NUM_PARALLEL_BUILDS}
+		make install
+	fi
 }
+build_freetype
 
 function build_gettext() {
 	if [[ ! -e "${SRC}/lib/pkgconfig/gettext.pc" ]]; then
@@ -468,9 +472,7 @@ function build_ffmpeg() {
 	echo "[FFmpeg] $elapsed seconds elapsed for build"
 }
 
-total_start_time="$(date -u +%s)"
 #build_aom
-#build_enca
 #build_freetype
 #if [[ "$ARCH" == "arm64" ]]; then
 #  build_gettext
@@ -486,6 +488,6 @@ total_start_time="$(date -u +%s)"
 #build_snappy
 #build_sdl
 #build_ffmpeg
-#total_end_time="$(date -u +%s)"
-#total_elapsed="$(($total_end_time-$total_start_time))"
+total_end_time="$(date -u +%s)"
+total_elapsed="$(($total_end_time-$total_start_time))"
 echo "Total $total_elapsed seconds elapsed for build"
