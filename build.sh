@@ -134,7 +134,7 @@ function build_aom() {
 function build_nasm() {
 	filename="nasm-2.15.05"
 	if [ ! -d "$CMPLD/$filename" ]; then
-		echo "Downloading: yasm (2.15.05)"
+		echo "Downloading: nasm (2.15.05)"
 		{ (curl -Ls -o - https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.tar.gz | tar zxf - -C $CMPLD/) & }
 		wait
 	fi
@@ -168,10 +168,15 @@ function build_pkgconfig() {
 build_pkgconfig
 
 function build_zlib() {
+	filename="zlib-1.2.12"
+	if [ ! -d "$CMPLD/$filename" ]; then
+		echo "Downloading: zlib (1.2.12)"
+		{ (curl -Ls -o - https://zlib.net/fossils/zlib-1.2.12.tar.gz | tar zxf - -C $CMPLD/) & }
+		wait
+	fi
 	if [[ ! -e "${SRC}/lib/pkgconfig/zlib.pc" ]]; then
 		echo '♻️ ' Start compiling ZLIB
-		cd ${CMPLD}
-		cd zlib-1.2.11
+		cd ${CMPLD}/$filename
 		./configure --prefix=${SRC}
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
@@ -179,6 +184,7 @@ function build_zlib() {
 		rm ${SRC}/lib/libz.* || true
 	fi
 }
+build_zlib
 
 function build_lame() {
 	if [[ ! -e "${SRC}/lib/libmp3lame.a" ]]; then
@@ -440,7 +446,6 @@ function build_ffmpeg() {
 
 total_start_time="$(date -u +%s)"
 #build_aom
-#build_pkgconfig
 #build_zlib
 #build_lame
 #build_x264
