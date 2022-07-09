@@ -188,35 +188,41 @@ build_zlib
 
 function build_lame() {
 	if [[ ! -e "${SRC}/lib/libmp3lame.a" ]]; then
-		cd ${CMPLD}
-		cd lame
+		echo '♻️ ' Start lame
+		cd ${CMPLD}/lame
 		./configure --prefix=${SRC} --disable-shared --enable-static
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
 	fi
 }
+build_lame
 
 function build_x264() {
 	if [[ ! -e "${SRC}/lib/pkgconfig/x264.pc" ]]; then
 		echo '♻️ ' Start compiling X264
-		cd ${CMPLD}
-		cd x264
+		cd ${CMPLD}/x264
 		./configure --prefix=${SRC} --disable-shared --enable-static --enable-pic
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
 		make install-lib-static
 	fi
 }
+build_x264
 
 function build_x265() {
+	filename="x265_3.3"
+	if [ ! -d "$CMPLD/$filename" ]; then
+		echo "Downloading: x265 (3.3)"
+		{ (curl -Ls -o - https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.3.tar.gz | tar zxf - -C $CMPLD/ &) & }
+		wait
+	fi
 	if [[ ! -e "${SRC}/lib/pkgconfig/x265.pc" ]]; then
 		echo '♻️ ' Start compiling X265
 		rm -f ${SRC}/include/x265*.h 2>/dev/null
 		rm -f ${SRC}/lib/libx265.a 2>/dev/null
 
 		echo '♻️ ' X265 12bit
-		cd ${CMPLD}
-		cd x265_3.3/source
+		cd ${CMPLD}/x265_3.3/source
 		cmake -DCMAKE_INSTALL_PREFIX:PATH=${SRC} -DHIGH_BIT_DEPTH=ON -DMAIN12=ON -DENABLE_SHARED=NO -DEXPORT_C_API=NO -DENABLE_CLI=OFF .
 		make -j ${NUM_PARALLEL_BUILDS}
 		mv libx265.a libx265_main12.a
@@ -224,8 +230,7 @@ function build_x265() {
 		rm CMakeCache.txt
 
 		echo '♻️ ' X265 10bit
-		cd ${CMPLD}
-		cd x265_3.3/source
+		cd ${CMPLD}/x265_3.3/source
 		cmake -DCMAKE_INSTALL_PREFIX:PATH=${SRC} -DMAIN10=ON -DHIGH_BIT_DEPTH=ON -DENABLE_SHARED=NO -DEXPORT_C_API=NO -DENABLE_CLI=OFF .
 		make clean
 		make -j ${NUM_PARALLEL_BUILDS}
@@ -233,8 +238,7 @@ function build_x265() {
 		make clean-generated && rm CMakeCache.txt
 
 		echo '♻️ ' X265 full
-		cd ${CMPLD}
-		cd x265_3.3/source
+		cd ${CMPLD}/x265_3.3/source
 		cmake -DCMAKE_INSTALL_PREFIX:PATH=${SRC} -DEXTRA_LIB="x265_main10.a;x265_main12.a" -DEXTRA_LINK_FLAGS=-L. -DLINKED_12BIT=ON -DLINKED_10BIT=ON -DENABLE_SHARED=OFF -DENABLE_CLI=OFF .
 		make clean
 		make -j ${NUM_PARALLEL_BUILDS}
@@ -244,17 +248,18 @@ function build_x265() {
 		make install
 	fi
 }
+build_x265
 
 function build_vpx() {
 	if [[ ! -e "${SRC}/lib/pkgconfig/vpx.pc" ]]; then
 		echo '♻️ ' Start compiling VPX
-		cd ${CMPLD}
-		cd libvpx
+		cd ${CMPLD}/libvpx
 		./configure --prefix=${SRC} --enable-vp8 --enable-postproc --enable-vp9-postproc --enable-vp9-highbitdepth --disable-examples --disable-docs --enable-multi-res-encoding --disable-unit-tests --enable-pic --disable-shared
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
 	fi
 }
+build_vpx
 
 function build_expat() {
 	if [[ ! -e "${SRC}/lib/pkgconfig/expat.pc" ]]; then
@@ -446,11 +451,6 @@ function build_ffmpeg() {
 
 total_start_time="$(date -u +%s)"
 #build_aom
-#build_zlib
-#build_lame
-#build_x264
-#build_x265
-#build_vpx
 #build_expat
 #build_libiconv
 #build_enca
