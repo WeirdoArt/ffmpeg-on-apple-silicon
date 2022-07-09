@@ -15,9 +15,12 @@ on:
 jobs:
   # This workflow contains a single job called "build"
   build:
+    name: build
     # The type of runner that the job will run on
-    runs-on: [macos-12, ARM64]
-
+    runs-on: ${{ matrix.os }}
+    strategy: 
+      matrix:
+        os: [macos-12, ARM64]
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
