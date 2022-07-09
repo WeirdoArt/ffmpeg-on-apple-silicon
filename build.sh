@@ -70,16 +70,17 @@ git clone --depth 1 -b master https://code.videolan.org/videolan/x264.git $CMPLD
 git clone --depth 1 -b origin https://github.com/rbrito/lame.git $CMPLD/lame &
 git clone --depth 1 -b master https://github.com/webmproject/libvpx $CMPLD/libvpx &
 git clone --depth 1 -b master https://github.com/FFmpeg/FFmpeg $CMPLD/ffmpeg &
-git clone --depth 1 -b v2.0.1 https://aomedia.googlesource.com/aom.git $CMPLD/aom &
+# git clone --depth 1 -b v2.0.1 https://aomedia.googlesource.com/aom.git $CMPLD/aom &
 wait
 
 function build_fribidi() {
 	local download_url=$(curl -s https://api.github.com/repos/fribidi/fribidi/releases/latest | jq -r '.assets[0].browser_download_url')
-	tarball_type=$(echo "$download_url" | awk -F "." '{print $NF}')
+	local tarball_type=$(echo "$download_url" | awk -F "." '{print $NF}')
 	local filename=$(basename $download_url ".tar.$tarball_type")
+	local version=$(echo "$filename" | awk -F "-" '{print $NF}')
 
 	if [ ! -d "$CMPLD/$filename" ]; then
-		echo "Downloading: fribidi"
+		echo "Downloading: fribidi ($version)"
 		{ (curl -Ls -o - ${download_url} | tar Jxf - -C $CMPLD/) & }
 		wait
 	fi
@@ -96,7 +97,7 @@ function build_fribidi() {
 build_fribidi
 
 function build_yasm() {
-	filename="yasm-1.3.0"
+	local filename="yasm-1.3.0"
 	if [ ! -d "$CMPLD/$filename" ]; then
 		echo "Downloading: yasm (1.3.0)"
 		{ (curl -Ls -o - http://www.tortall.net/projects/yasm/releases/yasm-1.3.0.tar.gz | tar zxf - -C $CMPLD/) & }
@@ -132,7 +133,7 @@ function build_aom() {
 }
 
 function build_nasm() {
-	filename="nasm-2.15.05"
+	local filename="nasm-2.15.05"
 	if [ ! -d "$CMPLD/$filename" ]; then
 		echo "Downloading: nasm (2.15.05)"
 		{ (curl -Ls -o - https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.tar.gz | tar zxf - -C $CMPLD/) & }
@@ -149,7 +150,7 @@ function build_nasm() {
 build_nasm
 
 function build_pkgconfig() {
-	filename="pkg-config-0.29.2"
+	local filename="pkg-config-0.29.2"
 	if [ ! -d "$CMPLD/$filename" ]; then
 		echo "Downloading: pkg-config (0.29.2)"
 		{ (curl -Ls -o - https://pkg-config.freedesktop.org/releases/pkg-config-0.29.2.tar.gz | tar zxf - -C $CMPLD/) & }
@@ -168,7 +169,7 @@ function build_pkgconfig() {
 build_pkgconfig
 
 function build_zlib() {
-	filename="zlib-1.2.12"
+	local filename="zlib-1.2.12"
 	if [ ! -d "$CMPLD/$filename" ]; then
 		echo "Downloading: zlib (1.2.12)"
 		{ (curl -Ls -o - https://zlib.net/fossils/zlib-1.2.12.tar.gz | tar zxf - -C $CMPLD/) & }
@@ -210,7 +211,7 @@ function build_x264() {
 build_x264
 
 function build_x265() {
-	filename="x265_3.3"
+	local filename="x265_3.3"
 	if [ ! -d "$CMPLD/$filename" ]; then
 		echo "Downloading: x265 (3.3)"
 		{ (curl -Ls -o - https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.3.tar.gz | tar zxf - -C $CMPLD/ &) & }
@@ -262,15 +263,26 @@ function build_vpx() {
 build_vpx
 
 function build_expat() {
+	local download_url=$(curl -s https://api.github.com/repos/libexpat/libexpat/releases/latest | jq -r '.assets[0].browser_download_url')
+	local tarball_type=$(echo "$download_url" | awk -F "." '{print $NF}')
+	local filename=$(basename $download_url ".tar.$tarball_type")
+	local version=$(echo "$filename" | awk -F "-" '{print $NF}')
+
+	if [ ! -d "$CMPLD/$filename" ]; then
+		echo "Downloading: expat ($version)"
+		{ (curl -L -o - ${download_url} | tar Jxf - -C $CMPLD/) & }
+		wait
+	fi
+
 	if [[ ! -e "${SRC}/lib/pkgconfig/expat.pc" ]]; then
 		echo '♻️ ' Start compiling EXPAT
-		cd ${CMPLD}
-		cd expat-2.2.10
+		cd ${CMPLD}/$filename
 		./configure --prefix=${SRC} --disable-shared --enable-static
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
 	fi
 }
+build_expat
 
 function build_libiconv() {
 	if [[ ! -e "${SRC}/lib/libiconv.a" ]]; then
@@ -451,7 +463,6 @@ function build_ffmpeg() {
 
 total_start_time="$(date -u +%s)"
 #build_aom
-#build_expat
 #build_libiconv
 #build_enca
 #build_freetype
