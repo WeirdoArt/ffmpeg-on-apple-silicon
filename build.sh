@@ -55,6 +55,16 @@ check_package pkgconfig
 check_package libtool
 check_package glib
 
+if [ ! "$(command -v autoreconf &>/dev/null)" ]; then
+	brew install autoconf
+fi
+if [ ! "$(command -v automake &>/dev/null)" ]; then
+	brew install autoconf
+fi
+if [ ! "$(command -v cmake &>/dev/null)" ]; then
+	brew install autoconf
+fi
+
 function build_fribidi() {
 	local download_url=$(curl -s https://api.github.com/repos/fribidi/fribidi/releases/latest | jq -r '.assets[0].browser_download_url')
 	tarball_type=$(echo "$download_url" | awk -F "." '{print $NF}')
