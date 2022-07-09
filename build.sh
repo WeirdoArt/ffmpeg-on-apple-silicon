@@ -54,6 +54,7 @@ function build_fribidi() {
 }
 build_fribidi
 
+
 function build_yasm() {
 	if [[ ! -e "${SRC}/lib/libyasm.a" ]]; then
 		echo '♻️ ' Start compiling YASM
