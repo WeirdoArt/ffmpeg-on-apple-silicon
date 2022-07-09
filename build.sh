@@ -100,7 +100,7 @@ function build_yasm() {
 	local filename="yasm-1.3.0"
 	if [ ! -d "$CMPLD/$filename" ]; then
 		echo "Downloading: yasm (1.3.0)"
-		{ (curl -Ls -o - http://www.tortall.net/projects/yasm/releases/yasm-1.3.0.tar.gz | tar zxf - -C $CMPLD/) & }
+		{ (curl -Ls -o - http://www.tortall.net/projects/yasm/releases/${filename}.tar.gz | tar zxf - -C $CMPLD/) & }
 		wait
 	fi
 
@@ -136,7 +136,7 @@ function build_nasm() {
 	local filename="nasm-2.15.05"
 	if [ ! -d "$CMPLD/$filename" ]; then
 		echo "Downloading: nasm (2.15.05)"
-		{ (curl -Ls -o - https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.tar.gz | tar zxf - -C $CMPLD/) & }
+		{ (curl -Ls -o - https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/${filename}.tar.gz | tar zxf - -C $CMPLD/) & }
 		wait
 	fi
 	if [[ ! -e "${SRC}/bin/nasm" ]]; then
@@ -153,7 +153,7 @@ function build_pkgconfig() {
 	local filename="pkg-config-0.29.2"
 	if [ ! -d "$CMPLD/$filename" ]; then
 		echo "Downloading: pkg-config (0.29.2)"
-		{ (curl -Ls -o - https://pkg-config.freedesktop.org/releases/pkg-config-0.29.2.tar.gz | tar zxf - -C $CMPLD/) & }
+		{ (curl -Ls -o - https://pkg-config.freedesktop.org/releases/${filename}.tar.gz | tar zxf - -C $CMPLD/) & }
 		wait
 	fi
 	if [[ ! -e "${SRC}/bin/pkg-config" ]]; then
@@ -172,7 +172,7 @@ function build_zlib() {
 	local filename="zlib-1.2.12"
 	if [ ! -d "$CMPLD/$filename" ]; then
 		echo "Downloading: zlib (1.2.12)"
-		{ (curl -Ls -o - https://zlib.net/fossils/zlib-1.2.12.tar.gz | tar zxf - -C $CMPLD/) & }
+		{ (curl -Ls -o - https://zlib.net/fossils/${filename}.tar.gz | tar zxf - -C $CMPLD/) & }
 		wait
 	fi
 	if [[ ! -e "${SRC}/lib/pkgconfig/zlib.pc" ]]; then
@@ -214,7 +214,7 @@ function build_x265() {
 	local filename="x265_3.3"
 	if [ ! -d "$CMPLD/$filename" ]; then
 		echo "Downloading: x265 (3.3)"
-		{ (curl -Ls -o - https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.3.tar.gz | tar zxf - -C $CMPLD/ &) & }
+		{ (curl -Ls -o - https://bitbucket.org/multicoreware/x265_git/downloads/${filename}.tar.gz | tar zxf - -C $CMPLD/ &) & }
 		wait
 	fi
 	if [[ ! -e "${SRC}/lib/pkgconfig/x265.pc" ]]; then
@@ -285,15 +285,25 @@ function build_expat() {
 build_expat
 
 function build_libiconv() {
+	local version="1.17"
+	local filename="libiconv-${version}"
+	local download_url=https://ftp.gnu.org/pub/gnu/libiconv/${filename}.tar.gz
+
+	if [ ! -d "$CMPLD/$filename" ]; then
+		echo "Downloading: libiconv ($version)"
+		{ (curl -Ls -o - ${download_url} | tar zxf - -C $CMPLD/) & }
+		wait
+	fi
+
 	if [[ ! -e "${SRC}/lib/libiconv.a" ]]; then
 		echo '♻️ ' Start compiling LIBICONV
-		cd ${CMPLD}
-		cd libiconv-1.16
+		cd ${CMPLD}/$filename
 		./configure --prefix=${SRC} --disable-shared --enable-static
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
 	fi
 }
+build_libiconv
 
 function build_enca() {
 	if [[ ! -d "${SRC}/libexec/enca" ]]; then
