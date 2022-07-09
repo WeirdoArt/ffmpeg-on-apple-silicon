@@ -34,9 +34,9 @@ export CFLAGS=${CFLAGS:-}
 
 function check_package() {
 	if [[ "$ARCH" == "arm64" ]]; then
-		echo "Installing $1 using Homebrew"
-		brew install "$1"
 		if [[ ! -e "/opt/homebrew/opt/$1" ]]; then
+			echo "Installing $1 using Homebrew"
+			brew install "$1"
 			export LDFLAGS="-L/opt/homebrew/opt/$1/lib ${LDFLAGS}"
 			export CFLAGS="-I/opt/homebrew/opt/$1/include ${CFLAGS}"
 			export PKG_CONFIG_PATH="$PKG_CONFIG_PATH:/opt/homebrew/opt/$1/lib/pkgconfig"
@@ -55,22 +55,30 @@ check_package pkgconfig
 check_package libtool
 check_package glib
 
-if [ ! "$(command -v autoreconf &>/dev/null)" ]; then
+if ! command -v autoreconf &>/dev/null; then
 	brew install autoconf
 fi
-if [ ! "$(command -v automake &>/dev/null)" ]; then
-	brew install autoconf
+if ! command -v automake &>/dev/null; then
+	brew install automake
 fi
-if [ ! "$(command -v cmake &>/dev/null)" ]; then
-	brew install autoconf
+if ! command -v cmake &>/dev/null; then
+	brew install cmake
 fi
+
+echo "Cloning required git repositories"
+git clone --depth 1 -b master https://code.videolan.org/videolan/x264.git $CMPLD/x264 &
+git clone --depth 1 -b origin https://github.com/rbrito/lame.git $CMPLD/lame &
+git clone --depth 1 -b master https://github.com/webmproject/libvpx $CMPLD/libvpx &
+git clone --depth 1 -b master https://github.com/FFmpeg/FFmpeg $CMPLD/ffmpeg &
+git clone --depth 1 -b v2.0.1 https://aomedia.googlesource.com/aom.git $CMPLD/aom &
+wait
 
 function build_fribidi() {
 	local download_url=$(curl -s https://api.github.com/repos/fribidi/fribidi/releases/latest | jq -r '.assets[0].browser_download_url')
 	tarball_type=$(echo "$download_url" | awk -F "." '{print $NF}')
 	local filename=$(basename $download_url ".tar.$tarball_type")
 
-	if [ ! -d "$CMPLD/$download_url" ]; then
+	if [ ! -d "$CMPLD/$filename" ]; then
 		echo "Downloading: fribidi"
 		{ (curl -Ls -o - ${download_url} | tar Jxf - -C $CMPLD/) & }
 		wait
@@ -88,15 +96,22 @@ function build_fribidi() {
 build_fribidi
 
 function build_yasm() {
+	filename="yasm-1.3.0"
+	if [ ! -d "$CMPLD/$filename" ]; then
+		echo "Downloading: yasm (1.3.0)"
+		{ (curl -Ls -o - http://www.tortall.net/projects/yasm/releases/yasm-1.3.0.tar.gz | tar zxf - -C $CMPLD/) & }
+		wait
+	fi
+
 	if [[ ! -e "${SRC}/lib/libyasm.a" ]]; then
 		echo '♻️ ' Start compiling YASM
-		cd ${CMPLD}
-		cd yasm-1.3.0
+		cd ${CMPLD}/${filename}
 		./configure --prefix=${SRC}
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
 	fi
 }
+build_yasm
 
 function build_aom() {
 	if [[ ! -e "${SRC}/lib/pkgconfig/aom.pc" ]]; then
