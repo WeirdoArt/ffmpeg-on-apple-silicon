@@ -1,9 +1,7 @@
 #!/bin/bash
 set -exuo pipefail
 
-
 # FFmpeg for ARM-based Apple Silicon Macs
-
 
 WORKDIR="$(pwd)/workdir"
 mkdir -p ${WORKDIR}
@@ -20,7 +18,7 @@ mkdir -p ${SRC}
 mkdir -p ${CMPLD}
 
 export PATH=${SRC}/bin:$PATH
-export CC=clang 
+export CC=clang
 export CXX=clang++
 export PKG_CONFIG_PATH="${SRC}/lib/pkgconfig"
 export MACOSX_DEPLOYMENT_TARGET=11.0
@@ -34,12 +32,11 @@ fi
 export LDFLAGS=${LDFLAGS:-}
 export CFLAGS=${CFLAGS:-}
 
-
 function build_fribidi() {
 	echo "Downloading: fribidi"
 	local download_url=$(curl -s https://api.github.com/repos/fribidi/fribidi/releases/latest | jq '.assets[0].browser_download_url')
 	echo "${download_url}"
-	{(curl -Ls -o - ${download_url} | tar Jxf - -C $CMPLD/) &};
+	{ (curl -L -o - ${download_url} | tar Jxf - -C $CMPLD/) & }
 	wait
 	local filename=$(basename $download_url)
 	local dirname=${filename//.tar.*z\"/}
@@ -53,7 +50,6 @@ function build_fribidi() {
 	fi
 }
 build_fribidi
-
 
 function build_yasm() {
 	if [[ ! -e "${SRC}/lib/libyasm.a" ]]; then
@@ -76,7 +72,7 @@ function build_aom() {
 
 		AOM_CMAKE_PARAMS="-DENABLE_DOCS=off -DENABLE_EXAMPLES=off -DENABLE_TESTDATA=off -DENABLE_TESTS=off -DENABLE_TOOLS=off -DCMAKE_INSTALL_PREFIX:PATH=${SRC} -DLIBTYPE=STATIC"
 		if [[ "$ARCH" == "arm64" ]]; then
-		AOM_CMAKE_PARAMS="$AOM_CMAKE_PARAMS -DCONFIG_RUNTIME_CPU_DETECT=0"
+			AOM_CMAKE_PARAMS="$AOM_CMAKE_PARAMS -DCONFIG_RUNTIME_CPU_DETECT=0"
 		fi
 		cmake ${CMPLD}/aom $AOM_CMAKE_PARAMS
 		make -j ${NUM_PARALLEL_BUILDS}
@@ -229,12 +225,12 @@ function build_enca() {
 
 function build_freetype() {
 	#if [[ ! -e "${SRC}/lib/pkgconfig/freetype2.pc" ]]; then
-		echo '♻️ ' Start compiling FREETYPE
-		cd ${CMPLD}
-		cd freetype-2.10.4
-		./configure --prefix=${SRC} --disable-shared --enable-static
-		make -j ${NUM_PARALLEL_BUILDS}
-		make install
+	echo '♻️ ' Start compiling FREETYPE
+	cd ${CMPLD}
+	cd freetype-2.10.4
+	./configure --prefix=${SRC} --disable-shared --enable-static
+	make -j ${NUM_PARALLEL_BUILDS}
+	make install
 	#fi
 }
 
@@ -244,8 +240,8 @@ function build_gettext() {
 		cd ${CMPLD}
 		cd gettext-0.21
 		./configure --prefix=${SRC} --disable-dependency-tracking --disable-silent-rules --disable-debug --disable-shared --enable-static \
-					--with-included-gettext --with-included-glib --with-includedlibcroco --with-included-libunistring --with-emacs \
-					--disable-java --disable-csharp --without-git --without-cvs --without-xz
+			--with-included-gettext --with-included-glib --with-includedlibcroco --with-included-libunistring --with-emacs \
+			--disable-java --disable-csharp --without-git --without-cvs --without-xz
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
 	fi
@@ -300,7 +296,7 @@ function build_ogg() {
 		echo '♻️ ' Start compiling LIBOGG
 		cd ${CMPLD}
 		cd libogg-1.3.4
-		patch -p1 < ./fix_unsigned_typedefs.patch
+		patch -p1 <./fix_unsigned_typedefs.patch
 		./configure --prefix=${SRC} --disable-shared --enable-static
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
@@ -335,7 +331,7 @@ function build_vidstab() {
 		echo '♻️ ' Start compiling Vid-stab
 		cd ${CMPLD}
 		cd vid.stab-1.1.0
-		patch -p1 < fix_cmake_quoting.patch
+		patch -p1 <fix_cmake_quoting.patch
 		cmake . -DCMAKE_INSTALL_PREFIX:PATH=${SRC} -DLIBTYPE=STATIC -DBUILD_SHARED_LIBS=OFF -DUSE_OMP=OFF -DENABLE_SHARED=off
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
@@ -371,13 +367,13 @@ function build_ffmpeg() {
 	export CFLAGS="-I${SRC}/include ${CFLAGS:-}"
 	export LDFLAGS="$LDFLAGS -lexpat -lenca -lfribidi -liconv -lstdc++ -lfreetype -framework CoreText -framework VideoToolbox"
 	./configure --prefix=${SRC} --extra-cflags="-fno-stack-check" --arch=${ARCH} --cc=/usr/bin/clang \
-				--enable-gpl --enable-version3 --pkg-config-flags=--static --enable-ffplay \
-				--enable-postproc --enable-nonfree --enable-runtime-cpudetect --enable-shared
+		--enable-gpl --enable-version3 --pkg-config-flags=--static --enable-ffplay \
+		--enable-postproc --enable-nonfree --enable-runtime-cpudetect --enable-shared
 	echo "build start"
 	start_time="$(date -u +%s)"
 	make -j ${NUM_PARALLEL_BUILDS}
 	end_time="$(date -u +%s)"
-	elapsed="$(($end_time-$start_time))"
+	elapsed="$(($end_time - $start_time))"
 	make install
 	echo "[FFmpeg] $elapsed seconds elapsed for build"
 }
