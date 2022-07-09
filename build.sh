@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -exuo pipefail
 
 # FFmpeg for ARM-based Apple Silicon Macs
@@ -33,16 +33,19 @@ export LDFLAGS=${LDFLAGS:-}
 export CFLAGS=${CFLAGS:-}
 
 function build_fribidi() {
-	echo "Downloading: fribidi"
-	local download_url=$(curl -s https://api.github.com/repos/fribidi/fribidi/releases/latest | jq '.assets[0].browser_download_url')
-	echo "${download_url}"
-	{ (curl -L -o - ${download_url} | tar Jxf - -C $CMPLD/) & }
-	wait
-	local filename=$(basename $download_url)
-	local dirname=${filename//.tar.*z\"/}
+	local download_url=$(curl -s https://api.github.com/repos/fribidi/fribidi/releases/latest | jq -r '.assets[0].browser_download_url')
+	tarball_type=$(echo "$download_url" | awk -F "." '{print $NF}')
+	local filename=$(basename $download_url ".tar.$tarball_type")
+	
+	if [ ! -d "$CMPLD/$download_url" ]; then
+		echo "Downloading: fribidi"
+		{ (curl -Ls -o - ${download_url} | tar Jxf - -C $CMPLD/) & }
+		wait
+	fi
+	
 	if [[ ! -e "${SRC}/lib/pkgconfig/fribidi.pc" ]]; then
 		echo '♻️ ' Start compiling FRIBIDI
-		cd ${CMPLD}/${dirname}
+		cd ${CMPLD}/${filename}
 		./configure --prefix=${SRC} --disable-debug --disable-dependency-tracking \
 			--disable-silent-rules --disable-shared --enable-static
 		make -j ${NUM_PARALLEL_BUILDS}
