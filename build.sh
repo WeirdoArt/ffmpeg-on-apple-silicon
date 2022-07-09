@@ -149,10 +149,15 @@ function build_nasm() {
 build_nasm
 
 function build_pkgconfig() {
+	filename="pkg-config-0.29.2"
+	if [ ! -d "$CMPLD/$filename" ]; then
+		echo "Downloading: pkg-config (0.29.2)"
+		{ (curl -Ls -o - https://pkg-config.freedesktop.org/releases/pkg-config-0.29.2.tar.gz | tar zxf - -C $CMPLD/) & }
+		wait
+	fi
 	if [[ ! -e "${SRC}/bin/pkg-config" ]]; then
 		echo '♻️ ' Start compiling pkg-config
-		cd ${CMPLD}
-		cd pkg-config-0.29.2
+		cd ${CMPLD}/$filename
 		export LDFLAGS="-framework Foundation -framework Cocoa"
 		./configure --prefix=${SRC} --with-pc-path=${SRC}/lib/pkgconfig --with-internal-glib --disable-shared --enable-static
 		make -j ${NUM_PARALLEL_BUILDS}
@@ -160,6 +165,7 @@ function build_pkgconfig() {
 		unset LDFLAGS
 	fi
 }
+build_pkgconfig
 
 function build_zlib() {
 	if [[ ! -e "${SRC}/lib/pkgconfig/zlib.pc" ]]; then
