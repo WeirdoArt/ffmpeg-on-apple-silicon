@@ -72,7 +72,7 @@ git clone --depth 1 -b master https://code.videolan.org/videolan/x264.git $CMPLD
 git clone --depth 1 -b origin https://github.com/rbrito/lame.git $CMPLD/lame &
 git clone --depth 1 -b master https://github.com/webmproject/libvpx $CMPLD/libvpx &
 git clone --depth 1 -b master https://github.com/FFmpeg/FFmpeg $CMPLD/ffmpeg &
-# git clone --depth 1 -b v2.0.1 https://aomedia.googlesource.com/aom.git $CMPLD/aom &
+git clone --depth 1 -b v2.0.1 git@github.com:WeirdoArt/aom.git $CMPLD/aom &
 wait
 
 function download_3rdparty_packet() {
@@ -87,12 +87,12 @@ function download_3rdparty_packet() {
 	else
 		local download_url=$4/${filename}-${version}.tar.$3
 	fi
-	
+
 	local arg=zxf
 	if [[ "${packet_type}" == "xz" ]]; then
 		arg=Jxf
 	fi
-	
+
 	if [ ! -d "$CMPLD/${filename}-${version}" ]; then
 		echo "Downloading: ${filename} ($version)"
 		{ (curl -Ls -o - ${download_url} | tar "${arg}" - -C $CMPLD/) & }
@@ -139,8 +139,7 @@ build_yasm
 function build_aom() {
 	if [[ ! -e "${SRC}/lib/pkgconfig/aom.pc" ]]; then
 		echo '♻️ ' Start compiling AOM
-		cd ${CMPLD}
-		cd aom
+		cd ${CMPLD}/aom
 		mkdir aom_build
 		cd aom_build
 
@@ -153,6 +152,7 @@ function build_aom() {
 		make install
 	fi
 }
+build_aom
 
 function build_nasm() {
 	local filename=nasm-2.15.05
@@ -334,11 +334,11 @@ function build_freetype() {
 build_freetype
 
 function build_gettext() {
+	local filename=gettext-0.21
 	download_3rdparty_packet gettext 0.21 xz https://ftp.gnu.org/gnu/gettext
-	if [[ ! -e "${SRC}/lib/pkgconfig/gettext.pc" ]]; then
+	if [[ ! -e "${SRC}/lib/libgettextpo.a" ]]; then
 		echo '♻️ ' Start compiling gettext
-		cd ${CMPLD}
-		cd gettext-0.21
+		cd ${CMPLD}/${filename}
 		./configure --prefix=${SRC} --disable-dependency-tracking --disable-silent-rules --disable-debug --disable-shared --enable-static \
 			--with-included-gettext --with-included-glib --with-includedlibcroco --with-included-libunistring --with-emacs \
 			--disable-java --disable-csharp --without-git --without-cvs --without-xz
@@ -349,127 +349,197 @@ function build_gettext() {
 build_gettext
 
 function build_fontconfig() {
+	local filename=fontconfig-2.14.0
+	download_3rdparty_packet fontconfig 2.14.0 gz https://www.freedesktop.org/software/fontconfig/release
 	if [[ ! -e "${SRC}/lib/pkgconfig/fontconfig.pc" ]]; then
 		echo '♻️ ' Start compiling FONTCONFIG
-		cd ${CMPLD}
-		cd fontconfig-2.13.93
+		cd ${CMPLD}/${filename}
 		./configure --prefix=${SRC} --enable-iconv --disable-libxml2 --disable-shared --enable-static --disable-docs
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
 	fi
 }
+build_fontconfig
 
 function build_harfbuzz() {
+	local download_url=$(curl -s https://api.github.com/repos/harfbuzz/harfbuzz/releases/latest | jq -r '.assets[0].browser_download_url')
+	local tarball_type=$(echo "$download_url" | awk -F "." '{print $NF}')
+	local filename=$(basename $download_url ".tar.$tarball_type")
+	local version=$(echo "$filename" | awk -F "-" '{print $NF}')
+
+	if [ ! -d "$CMPLD/$filename" ]; then
+		echo "Downloading: $filename ($version)"
+		{ (curl -Ls -o - ${download_url} | tar Jxf - -C $CMPLD/) & }
+		wait
+	fi
+
 	if [[ ! -e "${SRC}/lib/pkgconfig/harfbuzz.pc" ]]; then
 		echo '♻️ ' Start compiling harfbuzz
-		cd ${CMPLD}
-		cd harfbuzz-2.7.2
+		cd ${CMPLD}/${filename}
 		./configure --prefix=${SRC} --disable-shared --enable-static
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
 	fi
 }
+build_harfbuzz
 
 function build_ass() {
+	local download_url=$(curl -s https://api.github.com/repos/libass/libass/releases/latest | jq -r '.assets[0].browser_download_url')
+	local tarball_type=$(echo "$download_url" | awk -F "." '{print $NF}')
+	local filename=$(basename $download_url ".tar.$tarball_type")
+	local version=$(echo "$filename" | awk -F "-" '{print $NF}')
+
+	if [ ! -d "$CMPLD/$filename" ]; then
+		echo "Downloading: $filename ($version)"
+		{ (curl -Ls -o - ${download_url} | tar Jxf - -C $CMPLD/) & }
+		wait
+	fi
+
 	if [[ ! -e "${SRC}/lib/pkgconfig/libass.pc" ]]; then
-		cd ${CMPLD}
-		cd libass-0.16.0
-		#autoreconf -i
+		cd ${CMPLD}/${filename}
+		autoreconf -i
 		./configure --prefix=${SRC} --disable-dependency-tracking --disable-shread --enable-static
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
 	fi
 }
+build_ass
 
 function build_opus() {
+	local filename=opus-1.3.1
+	download_3rdparty_packet opus 1.3.1 gz https://archive.mozilla.org/pub/opus
 	if [[ ! -e "${SRC}/lib/pkgconfig/opus.pc" ]]; then
 		echo '♻️ ' Start compiling OPUS
-		cd ${CMPLD}
-		cd opus-1.3.1
+		cd ${CMPLD}/${filename}
 		./configure --prefix=${SRC} --disable-shared --enable-static
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
 	fi
 }
+build_opus
 
 function build_ogg() {
+	local filename=libogg-1.3.5
+	download_3rdparty_packet libogg 1.3.5 gz https://ftp.osuosl.org/pub/xiph/releases/ogg
+	patch_file=fix_unsigned_typedefs.patch
+	if [[ ! -e "$CMPLD/${filename}/${patch_file}" ]]; then
+		curl -s -o "$CMPLD/${filename}/${patch_file}" "https://github.com/xiph/ogg/commit/c8fca6b4a02d695b1ceea39b330d4406001c03ed.patch?full_index=1"
+	fi
+
 	if [[ ! -e "${SRC}/lib/pkgconfig/ogg.pc" ]]; then
 		echo '♻️ ' Start compiling LIBOGG
-		cd ${CMPLD}
-		cd libogg-1.3.4
-		patch -p1 <./fix_unsigned_typedefs.patch
+		cd ${CMPLD}/${filename}
+		patch -p1 -t <./fix_unsigned_typedefs.patch
 		./configure --prefix=${SRC} --disable-shared --enable-static
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
 	fi
 }
+build_ogg
 
 function build_vorbis() {
+	local filename=libvorbis-1.3.7
+	download_3rdparty_packet libvorbis 1.3.7 gz https://ftp.osuosl.org/pub/xiph/releases/vorbis
 	if [[ ! -e "${SRC}/lib/pkgconfig/vorbis.pc" ]]; then
 		echo '♻️ ' Start compiling LIBVORBIS
-		cd ${CMPLD}
-		cd libvorbis-1.3.7
+		cd ${CMPLD}/${filename}
 		./configure --prefix=${SRC} --with-ogg-libraries=${SRC}/lib --with-ogg-includes=${SRC}/include/ --enable-static --disable-shared --build=x86_64
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
 	fi
 }
+build_vorbis
 
 function build_theora() {
+	local filename=libtheora-1.1.1
+	download_3rdparty_packet libtheora 1.1.1 gz http://downloads.xiph.org/releases/theora
 	if [[ ! -e "${SRC}/lib/pkgconfig/theora.pc" ]]; then
 		echo '♻️ ' Start compiling THEORA
-		cd ${CMPLD}
-		cd libtheora-1.1.1
+		cd ${CMPLD}/${filename}
 		./configure --prefix=${SRC} --disable-asm --with-ogg-libraries=${SRC}/lib --with-ogg-includes=${SRC}/include/ --with-vorbis-libraries=${SRC}/lib --with-vorbis-includes=${SRC}/include/ --enable-static --disable-shared
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
 	fi
 }
+build_theora
 
 function build_vidstab() {
-	# https://github.com/georgmartius/vid.stab
+	local download_url=https://github.com/georgmartius/vid.stab/archive/v1.1.0.tar.gz
+	local filename=vid.stab
+	local version=1.1.0
+
+	if [ ! -d "$CMPLD/${filename}-${version}" ]; then
+		echo "Downloading: $filename ($version)"
+		{ (curl -Ls -o - ${download_url} | tar zxf - -C $CMPLD/) & }
+		wait
+	fi
+	if [[ ! -e "$CMPLD/${filename}-${version}/fix_cmake_quoting.patch" ]]; then
+		curl -s -o "$CMPLD/${filename}-${version}/fix_cmake_quoting.patch" https://raw.githubusercontent.com/Homebrew/formula-patches/5bf1a0e0cfe666ee410305cece9c9c755641bfdf/libvidstab/fix_cmake_quoting.patch
+	fi
+
 	if [[ ! -e "${SRC}/lib/pkgconfig/vidstab.pc" ]]; then
 		echo '♻️ ' Start compiling Vid-stab
-		cd ${CMPLD}
-		cd vid.stab-1.1.0
+		cd ${CMPLD}/${filename}-${version}
 		patch -p1 <fix_cmake_quoting.patch
 		cmake . -DCMAKE_INSTALL_PREFIX:PATH=${SRC} -DLIBTYPE=STATIC -DBUILD_SHARED_LIBS=OFF -DUSE_OMP=OFF -DENABLE_SHARED=off
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
 	fi
 }
+build_vidstab
 
 function build_snappy() {
+	local download_url=https://github.com/google/snappy/archive/1.1.8.tar.gz
+	local filename=snappy
+	local version=1.1.8
+
+	if [ ! -d "$CMPLD/${filename}-${version}" ]; then
+		echo "Downloading: $filename ($version)"
+		{ (curl -Ls -o - ${download_url} | tar zxf - -C $CMPLD/) & }
+		wait
+	fi
+
 	if [[ ! -e "${SRC}/lib/libsnappy.a" ]]; then
 		echo '♻️ ' Start compiling Snappy
-		cd ${CMPLD}
-		cd snappy-1.1.8
+		cd ${CMPLD}/${filename}-${version}
 		cmake . -DCMAKE_INSTALL_PREFIX:PATH=${SRC} -DLIBTYPE=STATIC -DENABLE_SHARED=off
 		make -j ${NUM_PARALLEL_BUILDS}
 		make install
 	fi
 }
+build_snappy
+
 function build_sdl() {
+	local filename=SDL2-2.0.22
+	download_3rdparty_packet SDL2 2.0.22 gz https://www.libsdl.org/release
 	if [[ ! -e "${SRC}/lib/pkgconfig/sdl2.pc" ]]; then
 		echo '♻️ ' Start compiling SDL
-		cd ${CMPLD}
-		cd SDL
-		cmake . -Bbuild -DCMAKE_INSTALL_PREFIX:PATH=${SRC} -DLIBTYPE=STATIC -DBUILD_SHARED_LIBS=OFF -DUSE_OMP=OFF -DENABLE_SHARED=OFF
-		make -C ./build -j ${NUM_PARALLEL_BUILDS}
+		cd ${CMPLD}/${filename}
+		./configure --prefix=${SRC}
+		make -j ${NUM_PARALLEL_BUILDS}
 		make install
 	fi
 }
+build_sdl
 
 function build_ffmpeg() {
-	echo '♻️ ' Start compiling FFMPEG
-	cd ${CMPLD}
-	cd FFmpeg
+	echo '🌜 ' Start compiling FFMPEG ' 🌛'
+	cd ${CMPLD}/ffmpeg
 	export LDFLAGS="-L${SRC}/lib ${LDFLAGS:-}"
 	export CFLAGS="-I${SRC}/include ${CFLAGS:-}"
-	export LDFLAGS="$LDFLAGS -lexpat -lenca -lfribidi -liconv -lstdc++ -lfreetype -framework CoreText -framework VideoToolbox"
+	# export LDFLAGS="$LDFLAGS -lexpat -lenca -lfribidi -liconv -lstdc++ -lfreetype -framework CoreText VideoToolbox"
 	./configure --prefix=${SRC} --extra-cflags="-fno-stack-check" --arch=${ARCH} --cc=/usr/bin/clang \
-		--enable-gpl --enable-version3 --pkg-config-flags=--static --enable-ffplay \
-		--enable-postproc --enable-nonfree --enable-runtime-cpudetect --enable-shared
+		--pkg-config-flags=--static --enable-gpl --enable-nonfree --enable-version3 --enable-runtime-cpudetect \
+		--enable-shared --enable-fontconfig --enable-postproc --disable-doc\
+		--enable-libopus --enable-libtheora --enable-libvorbis --enable-libmp3lame --enable-libass \
+		--enable-libfreetype --enable-libx264 --enable-libx265 --enable-libvpx --enable-libaom \
+		--enable-libvidstab --enable-libsnappy --enable-sdl2 --enable-ffplay
+
+	# --enable-avisynth --enable-libbluray --enable-libdav1d --enable-libgsm --enable-libmodplug --enable-libmysofa \
+	# --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-librubberband \
+	# --enable-libshine --enable-libsoxr --enable-libspeex -enable-libtwolame --enable-libvmaf --enable-libvo-amrwbenc \
+	# --enable-libwebp --enable-libxavs --enable-libxvid --enable-libzimg --enable-libzmq --enable-libzvbi --extra-version=tessus
+
 	echo "build start"
 	start_time="$(date -u +%s)"
 	make -j ${NUM_PARALLEL_BUILDS}
@@ -478,23 +548,7 @@ function build_ffmpeg() {
 	make install
 	echo "[FFmpeg] $elapsed seconds elapsed for build"
 }
-
-#build_aom
-#build_freetype
-#if [[ "$ARCH" == "arm64" ]]; then
-#  build_gettext
-#fi
-#build_fontconfig
-#build_harfbuzz
-#build_ass
-#build_opus
-#build_ogg
-#uild_vorbis
-#build_theora
-#build_vidstab
-#build_snappy
-#build_sdl
-#build_ffmpeg
+build_ffmpeg
 total_end_time="$(date -u +%s)"
-total_elapsed="$(($total_end_time-$total_start_time))"
+total_elapsed="$(($total_end_time - $total_start_time))"
 echo "Total $total_elapsed seconds elapsed for build"
