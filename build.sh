@@ -12,10 +12,6 @@ SRC="$WORKDIR/installdir"
 CMPLD="$WORKDIR/compile"
 NUM_PARALLEL_BUILDS=$(sysctl -n hw.ncpu)
 
-# if [[ -e "${CMPLD}" ]]; then
-#   rm -rf "${CMPLD}"
-# fi
-
 mkdir -p ${SRC}
 mkdir -p ${CMPLD}
 
