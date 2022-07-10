@@ -31,4 +31,3 @@ jobs:
         run: |
           echo $(uname -m)
           ./build.sh
-
